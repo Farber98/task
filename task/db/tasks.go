@@ -8,6 +8,7 @@ import (
 )
 
 var taskBucket = []byte("tasks")
+var completedBucket = []byte("completed")
 var db *bolt.DB
 
 type Task struct {
@@ -23,6 +24,7 @@ func Init(dbPath string) (err error) {
 
 	return db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(taskBucket)
+		_, err = tx.CreateBucketIfNotExists(completedBucket)
 		return err
 	})
 }
@@ -41,9 +43,40 @@ func CreateTask(task string) (id int, err error) {
 	return id, nil
 }
 
+func CompleteTask(task string) (err error) {
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(completedBucket)
+		id64, _ := b.NextSequence()
+		key := itob(id64)
+		return b.Put(key, []byte(task))
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func ReadTasks() (tasks []*Task, err error) {
 	err = db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(taskBucket)
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			tasks = append(tasks, &Task{
+				Key:   btoi(k),
+				Value: string(v),
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}
+
+func ReadCompleted() (tasks []*Task, err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(completedBucket)
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			tasks = append(tasks, &Task{

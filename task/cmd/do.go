@@ -34,12 +34,14 @@ var doCmd = &cobra.Command{
 				fmt.Println("> invalid task number: ", id)
 				continue
 			}
-			err := db.DeleteTask(tasks[id-1].Key)
+			err := db.CompleteTask(tasks[id-1].Value)
 			if err != nil {
-				fmt.Printf("> failed to complete task %d. Error: %s\n", id, err.Error())
+				fmt.Printf("> failed to complete task '%s' with id %d. Error: %s\n", tasks[id-1].Value, id, err.Error())
 			} else {
-				fmt.Printf("> marked %d as completed \n", id)
+				fmt.Printf("> completed task '%s' with id %d \n", tasks[id-1].Value, id)
 			}
+			err = db.DeleteTask(tasks[id-1].Key)
+
 		}
 	},
 }
