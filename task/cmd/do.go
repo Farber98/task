@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"task/task/db"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -34,7 +35,8 @@ var doCmd = &cobra.Command{
 				fmt.Println("> invalid task number: ", id)
 				continue
 			}
-			err := db.CompleteTask(tasks[id-1].Value)
+			tasks[id-1].Completed = time.Now()
+			err := db.CompleteTask(tasks[id-1])
 			if err != nil {
 				fmt.Printf("> failed to complete task '%s' with id %d. Error: %s\n", tasks[id-1].Value, id, err.Error())
 			} else {

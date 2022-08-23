@@ -24,7 +24,7 @@ var listCmd = &cobra.Command{
 		} else {
 			fmt.Println("> tasks:")
 			for i, task := range tasks {
-				fmt.Printf("%d. %s\n", i+1, task.Value)
+				fmt.Printf("%d. %s  [%s]\n", i+1, task.Value, task.Created.Format("2006-01-02 15:04:05"))
 			}
 		}
 	},

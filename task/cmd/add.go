@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 	"task/task/db"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -14,7 +15,7 @@ var addCmd = &cobra.Command{
 	Short: "adds a task to your task list.",
 	Run: func(cmd *cobra.Command, args []string) {
 		task := strings.Join(args, " ")
-		_, err := db.CreateTask(task)
+		err := db.CreateTask(&db.Task{Value: task, Created: time.Now()})
 		if err != nil {
 			log.Printf(err.Error())
 			return

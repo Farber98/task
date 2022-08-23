@@ -2,6 +2,7 @@ package db
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -12,8 +13,10 @@ var completedBucket = []byte("completed")
 var db *bolt.DB
 
 type Task struct {
-	Key   uint64
-	Value string
+	Key       uint64
+	Value     string
+	Created   time.Time
+	Completed time.Time
 }
 
 func Init(dbPath string) (err error) {
@@ -29,26 +32,33 @@ func Init(dbPath string) (err error) {
 	})
 }
 
-func CreateTask(task string) (id int, err error) {
+func CreateTask(task *Task) (err error) {
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(taskBucket)
 		id64, _ := b.NextSequence()
-		id = int(id64)
 		key := itob(id64)
-		return b.Put(key, []byte(task))
+		encoded, err := json.Marshal(task)
+		if err != nil {
+			return err
+		}
+		return b.Put(key, []byte(encoded))
 	})
 	if err != nil {
-		return 0, err
+		return err
 	}
-	return id, nil
+	return nil
 }
 
-func CompleteTask(task string) (err error) {
+func CompleteTask(task *Task) (err error) {
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(completedBucket)
 		id64, _ := b.NextSequence()
 		key := itob(id64)
-		return b.Put(key, []byte(task))
+		encoded, err := json.Marshal(task)
+		if err != nil {
+			return err
+		}
+		return b.Put(key, []byte(encoded))
 	})
 	if err != nil {
 		return err
@@ -61,9 +71,15 @@ func ReadTasks() (tasks []*Task, err error) {
 		b := tx.Bucket(taskBucket)
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
+			task := &Task{}
+			err := json.Unmarshal(v, task)
+			if err != nil {
+				return err
+			}
 			tasks = append(tasks, &Task{
-				Key:   btoi(k),
-				Value: string(v),
+				Key:     btoi(k),
+				Value:   task.Value,
+				Created: task.Created,
 			})
 		}
 		return nil
@@ -79,9 +95,44 @@ func ReadCompleted() (tasks []*Task, err error) {
 		b := tx.Bucket(completedBucket)
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
+			task := &Task{}
+			err := json.Unmarshal(v, task)
+			if err != nil {
+				return err
+			}
 			tasks = append(tasks, &Task{
-				Key:   btoi(k),
-				Value: string(v),
+				Key:       btoi(k),
+				Value:     string(task.Value),
+				Created:   task.Created,
+				Completed: task.Completed,
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}
+
+func ReadCompletedLastMinute() (tasks []*Task, err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(completedBucket)
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			task := &Task{}
+			err := json.Unmarshal(v, task)
+			if err != nil {
+				return err
+			}
+			if task.Completed.Before(time.Now().Add(-5 * time.Minute)) {
+				continue
+			}
+			tasks = append(tasks, &Task{
+				Key:       btoi(k),
+				Value:     string(task.Value),
+				Created:   task.Created,
+				Completed: task.Completed,
 			})
 		}
 		return nil

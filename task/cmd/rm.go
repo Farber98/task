@@ -11,7 +11,7 @@ import (
 
 // removeCmd represents the do command
 var removeCmd = &cobra.Command{
-	Use:   "remove",
+	Use:   "rm",
 	Short: "removes tasks from the tasklist",
 	Run: func(cmd *cobra.Command, args []string) {
 		var ids []int
